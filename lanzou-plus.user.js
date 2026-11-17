@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Lanzou++
 // @namespace    https://github.com/akanesamaa/lanzou-plus
-// @version      1.0.0
+// @version      1.0.1
 // @description  蓝奏云文件夹批量下载：顶部命令条、全选/搜索、自动加载全部；桌面专用
 // @author       akanesamaa
 // @license      MIT
@@ -28,7 +28,7 @@
    * ======================================================= */
   const NAME = 'Lanzou++';
   // 改版本时和文件头的 @version 一起改（管理器只认 @version，VERSION 只用于显示）
-  const VERSION = '1.0.0';
+  const VERSION = '1.0.1';
   const DOWNLOAD_GAP = 1500;   // 普通下载间隔；Chromium 单窗口会放宽到 3.5s
   const WIN_CLOSE_DELAY = 10000; // 单窗口整批发完后，等 10s 再关
 
