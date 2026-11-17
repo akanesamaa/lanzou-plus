@@ -61,7 +61,7 @@
   })();
 
   /** 触摸且没有 hover = 手机/纯触屏：脚本直接停用，不注入任何 UI */
-  const TAB_ONLY = isTouch && !canHover;
+  const DISABLE_ON_TOUCH = isTouch && !canHover;
 
   /**
    * 浏览器内核。用来决定「静默下载」到底走哪条路。
@@ -469,11 +469,10 @@
         added++;
       } else {
         item.anchor = a;
-        // 站点重绘后行节点会换人，旧行上记下的「原背景色」跟着作废，
-        // 否则会把上一个节点的颜色涂到新节点上
+        // 站点重绘后行节点会换人，缓存的着色/显示状态跟着作废，
+        // 否则会把上一个节点的状态带到新节点上
         if (item.row !== row) {
           item.row = row;
-          item._bg = undefined;
           item._paints = undefined;
           item._disp = undefined;
           item._painted = undefined;   // 新节点要重新刷一次底色
@@ -1586,13 +1585,12 @@
   /* =========================================================
    * 10. 页面搜索 + 自动加载全部
    * ---------------------------------------------------------
-   * 搜索条按 mi2obtainium 首页的 urlbar 做：白底、8px 圆角、
-   * 大投影、左边放大镜、右边清除。过滤只改行的 display，
-   * 不动 items，所以勾选、直链、下载都不受影响。
+   * 搜索条：白底、方角、细边框，左边放大镜、右边清除。过滤只改行的
+   * display，不动 items，所以勾选、直链、下载都不受影响。
    *
    * 精确和模糊同时生效：normalize 后先看子串，没命中再看
    * 子序列（字符按顺序出现即可）。§x 这类控制码在两边都
-   * 会被剥掉，所以直接打 juju / kaisen 也能搜到。
+   * 会被剥掉，所以直接打 demo / alpha 也能搜到。
    * ======================================================= */
   const SEARCH_STYLE_ID = 'lzpp-search-style';
   const SEARCH_CSS = `    .lzpp-search {
@@ -2309,7 +2307,7 @@
     window.__lanzouPlusPlus__ = true;
 
     // 手机/纯触摸设备不再支持：不注入命令条、不扫描、不自动加载
-    if (TAB_ONLY) {
+    if (DISABLE_ON_TOUCH) {
       log('手机端已停用，请在桌面浏览器使用');
       return;
     }
