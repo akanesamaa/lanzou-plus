@@ -35,10 +35,9 @@
   /**
    * 直链带 token / sign / time，绑会话、时间、IP，过一阵就失效（服务器直接回
    * 400 Error : Time Out）。所以拿到手之后不能永久当缓存用 —— 超过这个时长
-   * 就当它已经死了，复制前重新解析一遍。
+   * 就重新解析一遍。
    *
-   * 10 分钟是保守值：正常用法是「复制 → 立刻粘进下载器」，几秒内就开始下了；
-   * 而解析 20 个文件本身就要半分钟，留足余量不会误伤。
+   * 10 分钟是保守值：同一轮下载里复用的直链不会太旧，同时给慢速批量留足余量。
    */
   const DIRECT_TTL = 10 * 60 * 1000;
 
@@ -392,7 +391,7 @@
     dropBlocked();
 
     // 单文件页 /iXXXX 整页只有一个文件，没有「批量」可言，
-    // 连复选框都不该往里插（面板本身也已经藏了）。
+    // 连复选框都不该往里插。
     // 推广位在上面已经清掉了，和文件夹页保持一致
     if (isSingleFilePath()) return;
 
@@ -802,10 +801,8 @@
     }
 
     /* 有的响应会晚到 —— 实测慢的时候要两三秒，比判定超时还晚，
-       那样行数会在状态栏写好之后又涨一截，面板上的总数和状态栏对不上。
-       先等它落定，再把按钮和状态栏一次性翻过来。
-       这期间 state.loading 还是 true，按钮就一直是「停止加载」，
-       不会出现「按钮已经没了、状态栏还写着加载中」那种错位。
+       那样行数会在状态行写好之后又涨一截。先等它落定，再一次性更新
+       加载状态和行数。这期间 state.loading 还是 true，界面一直显示加载中。
        停止与否在等之前就定下来：这 700ms 里再点一下不该把已经跑完的
        这一轮报成「已停止」 */
     const stopped = state.loadStop;
@@ -974,11 +971,6 @@
 
   /* =========================================================
    * 6. 清理推广位
-   * ---------------------------------------------------------
-   * 曾经这里还有一段「单文件页下载线路」兜底（scanLinks）：认不出文件行时
-   * 把页面上像下载链接的 <a> 收集进面板。后来单文件页 /iXXXX 干脆不显示
-   * 面板了，那段就没有可展示的地方，遂删。想恢复的话，得连面板可见性
-   * 判断（isFolderPage）一起改。
    * ======================================================= */
 
   /** 「一键转存到我的网盘」这类推广位，永远不当作文件 */
@@ -1744,7 +1736,6 @@
       text-align: center;
       font-variant-numeric: tabular-nums;
     }
-    .lzpp-sel b { color: #1a1a1a; font-weight: 700; }
     .lzpp-sel span { color: #6b6b6b; }
     .lzpp-loadnote {
       width: 100%;
@@ -2186,36 +2177,6 @@
 
   function updateUI() {
     syncBar();
-  }
-
-  /**
-   * 元素是否还在显示。
-   *
-   * 站点多数时候用内联 display 切换，但密码框也有被样式表里的 class 藏掉的
-   * 模板（内联样式看不出来）。先看内联，再补一次 computed —— 这个函数只在
-   * 判定密码页时调用，不在热路径上。
-   */
-  function isShown(el) {
-    if (!el) return false;
-    for (let n = el; n && n.nodeType === 1; n = n.parentElement) {
-      if (n.hidden) return false;
-      const st = n.style;
-      if (st && (st.display === 'none' || st.visibility === 'hidden')) return false;
-      try {
-        const cs = window.getComputedStyle(n);
-        if (cs && (cs.display === 'none' || cs.visibility === 'hidden')) return false;
-      } catch (e) {
-        // jsdom 之类没有完整级联的环境，拿不到就按内联结果算
-      }
-    }
-    return true;
-  }
-
-  /** 还停在密码页：页面上有可见的密码框，且一个文件都还没识别出来 */
-  function isPasswordPage() {
-    if (items.size > 0) return false;
-    const pwd = document.querySelector(PWD_INPUT_SEL);
-    return !!pwd && isShown(pwd);
   }
 
   /** 单文件页 /iXXXX：整页一个文件，没有批量可言 */
