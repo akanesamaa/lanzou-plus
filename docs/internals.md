@@ -1,6 +1,6 @@
 # Lanzou++ 实现说明
 
-> 这里存放从 `lanzou-plus.user.js` 移出的中文注释。代码里只保留少量必要的英文短注释；站点行为、实测数据和历史原因集中在这里。
+> 这里存放从 `lanzou-plus.user.js` 移出的注释：中文说明在源码归档，英文短注释在单独一节。代码里除 userscript 元数据外不再保留注释。
 
 ## 概览
 
@@ -10,6 +10,88 @@
 - **搜索**：精确子串 + 字符顺序模糊匹配。
 - **队列**：串行发起下载，支持停止、失败重试和状态行。
 - **密码页**：统一处理密码框和回车提交。
+
+## 代码内英文注释（迁移）
+
+> 以下短注释已从 JS 移除，行号对应 `1.0.2` 版本。
+
+### 约第 26 行
+
+```text
+// Implementation notes: docs/internals.md
+```
+
+### 约第 30 行
+
+```text
+// Core constants
+```
+
+### 约第 39 行
+
+```text
+// Direct URLs expire quickly; reuse only within a short window
+```
+
+### 约第 115 行
+
+```text
+// key -> { key,label,checked,anchor,row,cb,size,direct,directAt,error }
+```
+
+### 约第 318 行
+
+```text
+// Scan rows and inject checkboxes
+```
+
+### 约第 543 行
+
+```text
+// Auto-load every page
+```
+
+### 约第 799 行
+
+```text
+// Remove promo rows
+```
+
+### 约第 1186 行
+
+```text
+// Resolve a file page to a direct URL
+```
+
+### 约第 1211 行
+
+```text
+// Download queue
+```
+
+### 约第 1710 行
+
+```text
+// UI state
+```
+
+### 约第 1760 行
+
+```text
+// Search
+```
+
+### 约第 1962 行
+
+```text
+// Password page
+```
+
+### 约第 1996 行
+
+```text
+// Boot
+```
 
 ## 源码注释归档
 

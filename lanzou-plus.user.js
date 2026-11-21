@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Lanzou++
 // @namespace    https://github.com/akanesamaa/lanzou-plus
-// @version      1.0.2
+// @version      1.0.3
 // @description  蓝奏云文件夹批量下载：顶部命令条、全选/搜索、自动加载全部；桌面专用
 // @author       akanesamaa
 // @license      MIT
@@ -23,49 +23,32 @@
 (function () {
   'use strict';
 
-  // Implementation notes: docs/internals.md
-
-
-
-  // Core constants
   const NAME = 'Lanzou++';
 
-  const VERSION = '1.0.2';
+  const VERSION = '1.0.3';
   const DOWNLOAD_GAP = 1500;
   const WIN_CLOSE_DELAY = 10000;
 
-
-
-  // Direct URLs expire quickly; reuse only within a short window
   const DIRECT_TTL = 10 * 60 * 1000;
 
   const ACCENT = '#0a5fbf';
   const ACCENT_SOFT = '#e8f3fd';
 
-
-
   const PWD_INPUT_SEL = '#pwd, input[name="pwd"], input.passwdinput, input[type="password"]';
-
 
   const isTouch = (function () {
     try { return !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches); }
     catch (e) { return false; }
   })();
 
-
   const canHover = (function () {
     try { return !!(window.matchMedia && window.matchMedia('(hover: hover)').matches); }
     catch (e) { return false; }
   })();
 
-
   const DISABLE_ON_TOUCH = isTouch && !canHover;
 
-
-
   const IS_GECKO = /Firefox\//.test(navigator.userAgent || '');
-
-
 
   const FILE_EXT = 'zip|rar|7z|tar|gz|bz2|xz|zst|tgz|cab|part\\d+\\.rar|\\d{3}|' +
     'apk|exe|msi|dmg|iso|img|txt|pdf|docx?|xlsx?|pptx?|epub|mobi|azw3?|' +
@@ -74,29 +57,17 @@
     'bin|ipa|deb|rpm|jar|whl|py|html?|ttf|otf|woff2?|json|xml|csv|md|torrent|chm';
   const FILE_NAME_RE = new RegExp('\\.(' + FILE_EXT + ')$', 'i');
 
-
-
   const TIME_SRC = '昨天|前天|今天|刚刚|\\d{1,2}:\\d{2}|\\d{4}-\\d{2}-\\d{2}|\\d{1,2}-\\d{1,2}|' +
     '\\d+\\s*(?:秒|分钟|小时|天|周|个?月|年)\\s*前';
-
-
-
-
-
 
   const SIZE_RE = /\d+(?:[.,]\d+)*\s*[KMGT]B?(?![A-Za-z])/i;
   const TIME_RE = new RegExp('(?:' + TIME_SRC + ')');
 
-
-
   const TAIL_TIME_RE = new RegExp('\\s*(?:(?:' + TIME_SRC + ')\\s*)+$');
   const TAIL_SIZE_RE = /\s*\d+(?:[.,]\d+)*\s*[KMGT]B?\s*$/i;
 
-
   const BLOCK_TEXT_RE = /(一键转存|转存到|保存到.*网盘|存到网盘|我的网盘)/;
   const BLOCK_HREF_RE = /(ilanzou\.com|\/unproved\/|pd\/url)/i;
-
-
 
   const $$ = (sel, root) => Array.prototype.slice.call((root || document).querySelectorAll(sel));
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -110,9 +81,7 @@
   };
   const log = (...args) => console.log('%c[' + NAME + ']', 'color:#5f6368;font-weight:700', ...args);
 
-
-
-  const items = new Map();          // key -> { key,label,checked,anchor,row,cb,size,direct,directAt,error }
+  const items = new Map();
   const cbItem = new WeakMap();
   const anchorItem = new WeakMap();
   const state = {
@@ -128,10 +97,6 @@
     pageGap: 1800,
   };
 
-
-
-
-
   function fileNameOf(text) {
     let t = (text || '').replace(/\s+/g, ' ').trim();
     if (!t || t.length > 200) return '';
@@ -143,8 +108,6 @@
     return FILE_NAME_RE.test(t) ? t : '';
   }
 
-
-
   function nameTextOf(a) {
     let s = '';
     for (let n = a.firstChild; n; n = n.nextSibling) {
@@ -154,20 +117,13 @@
     return s || (a.textContent || '').replace(/\s+/g, ' ').trim();
   }
 
-
   const TRUNC_RE = /(?:\.\.\.|…)\s*$/;
-
 
   function hasFileIcon(a) {
     const img = a.querySelector('img');
     if (img && /filetype\//i.test(img.getAttribute('src') || '')) return true;
     return /^\/?i[0-9A-Za-z_-]{5,}$/.test((a.getAttribute('href') || '').trim());
   }
-
-
-
-
-
 
   const nameCache = new WeakMap();
 
@@ -180,8 +136,6 @@
       nameCache.set(a, { raw: raw, name: n });
       return n;
     }
-
-
 
     if (TRUNC_RE.test(raw) && raw.length > 4 && hasFileIcon(a)) {
       nameCache.set(a, { raw: raw, name: raw });
@@ -203,13 +157,9 @@
     return n;
   }
 
-
-
   function normRowText(row) {
     return String((row && row.textContent) || '').replace(/\s+/g, ' ').trim();
   }
-
-
 
   const FULL_SIZE_RE = /^\d+(?:[.,]\d+)*\s*[KMGT]B?$/i;
   const FULL_TIME_RE = new RegExp('^(?:' + TIME_SRC + ')$');
@@ -224,12 +174,9 @@
     return false;
   }
 
-
-
   const rowCache = new WeakMap();
 
   function pickRow(anchor) {
-
 
     const hit = rowCache.get(anchor);
     if (hit && hit.contains(anchor)) return hit;
@@ -247,8 +194,6 @@
       hops++;
     }
 
-
-
     let el2 = anchor.parentElement;
     let hops2 = 0;
     while (el2 && el2 !== document.body && hops2 < 6) {
@@ -264,12 +209,9 @@
     return null;
   }
 
-
-
   function sizeOf(text) {
     const m = String(text || '').match(SIZE_RE);
     if (!m) return 0;
-
 
     let s = m[0].replace(/[^\d.,]/g, '');
     const ci = s.lastIndexOf(',');
@@ -291,8 +233,6 @@
     return Math.round(num * mul);
   }
 
-
-
   function sizeOfRow(row) {
     const cell = row && row.querySelector
       ? row.querySelector('#size, .mmr span, .files span')
@@ -304,7 +244,6 @@
     return sizeOf(all.length ? all[all.length - 1] : '');
   }
 
-
   function fmtSize(bytes) {
     if (!bytes) return '';
     const k = 1024;
@@ -313,14 +252,8 @@
     return +(bytes / (k * k * k)).toFixed(1) + 'G';
   }
 
-
-
-  // Scan rows and inject checkboxes
   function scan() {
     dropBlocked();
-
-
-
 
     if (isSingleFilePath()) return;
 
@@ -335,31 +268,14 @@
     for (let i = 0; i < anchors.length; i++) {
       const a = anchors[i];
 
-
       if (a.querySelector('.s_ad')) continue;
 
       const name = nameOfAnchor(a);
       if (!name) continue;
 
-
-
       const row = pickRow(a) || a;
       if (!row || usedRows.has(row)) continue;
       usedRows.add(row);
-
-
-      //
-
-
-
-      //
-
-
-
-
-
-
-      //
 
       const href = itemUrl({ anchor: a });
       if (href) {
@@ -367,16 +283,6 @@
         if (seenRow.has(fp)) { dup++; continue; }
         seenRow.add(fp);
       }
-
-
-      //
-
-
-      //
-
-
-
-
 
       const nth = (seenName.get(name) || 0) + 1;
       seenName.set(name, nth);
@@ -399,7 +305,6 @@
       } else {
         item.anchor = a;
 
-
         if (item.row !== row) {
           item.row = row;
           item._paints = undefined;
@@ -409,17 +314,11 @@
         }
       }
 
-
-
-
       if (rowChanged || !item.size) item.size = sizeOfRow(row) || item.size || 0;
       item._href = href;
       anchorItem.set(a, item);
       injectCheckbox(item);
     }
-
-
-
 
     if (usedRows.size > 0) pruneGone(seenKeys);
 
@@ -428,39 +327,25 @@
     render();
   }
 
-
-
-
-
   const PAGE_WAIT = 4000;
-
-
 
   const PAGE_GAP_MIN = 1200;
   const PAGE_GAP_MAX = 4000;
-
 
   function backoffMs(n) {
     return Math.min(30000, 3000 * Math.pow(2, n - 1));
   }
 
-
   const STRIKES = 6;
-
-
 
   function moreBtn() {
     return document.getElementById('filemore');
   }
 
-
-
   function sitePg() {
     const v = window.pgs;
     return typeof v === 'number' ? v : null;
   }
-
-
 
   function parsePageReply(xhr) {
     let data;
@@ -506,8 +391,6 @@
     X.prototype.__lzppHooked = true;
   }
 
-
-
   function siteSaysDone() {
     const b = moreBtn();
     if (!b) return true;
@@ -518,13 +401,10 @@
     }
   }
 
-
-
   function rowCount() {
     const n = document.querySelectorAll('#infos > div[id=ready]').length;
     return n || items.size;
   }
-
 
   function waitRowsGrow(before, timeout) {
     return new Promise(function (resolve) {
@@ -538,9 +418,6 @@
     });
   }
 
-
-
-  // Auto-load every page
   async function loadAll() {
     if (state.loading) { state.loadStop = true; return; }
     if (state.running || state.noMore || !moreBtn()) return;
@@ -556,8 +433,6 @@
     let pages = 0;
     let ended = '';
 
-
-
     const strikes = STRIKES;
 
     while (!state.loadStop) {
@@ -568,7 +443,6 @@
       const pg0 = sitePg();
       state.lastPage = null;
 
-
       const wasShown = !siteSaysDone();
       try { btn.click(); }
       catch (e) { ended = 'gone'; break; }
@@ -576,8 +450,6 @@
       const grew0 = await waitRowsGrow(before, PAGE_WAIT);
       if (state.loadStop) break;
       let grew = grew0;
-
-
 
       if (!grew && state.pagePending) {
         const tPending = Date.now();
@@ -587,8 +459,6 @@
         grew = rowCount() > before;
         if (state.loadStop) break;
       }
-
-
 
       const reply = state.lastPage;
       const pg1 = sitePg();
@@ -601,28 +471,20 @@
         setStatus('加载中');
         updateUI();
 
-
-
-
-
         if (reply ? reply.end : (wasShown && siteSaysDone())) { ended = 'gone'; break; }
 
         state.pageGap = Math.max(PAGE_GAP_MIN, state.pageGap - 100);
         await sleep(state.pageGap);
       } else if (ok) {
 
-
         ended = 'gone';
         break;
       } else {
-
 
         state.pageGap = Math.min(PAGE_GAP_MAX, state.pageGap + 600);
         miss++;
         if (miss >= strikes) { ended = 'stall'; break; }
         await sleep(backoffMs(miss));
-
-
 
         await sleep(300);
         if (state.loadStop) break;
@@ -637,21 +499,15 @@
       }
     }
 
-
-
     const stopped = state.loadStop;
     await sleep(700);
 
     state.loading = false;
     state.loadStop = false;
 
-
-
     if (ended === 'gone') state.noMore = true;
 
     scan();
-
-
 
     const total = items.size;
     const rowsNow = rowCount();
@@ -665,13 +521,9 @@
     if (pages > 0) log('加载全部：点了 ' + pages + ' 页，' + startRows + ' → ' + total);
   }
 
-
-
   function pruneGone(seen) {
     let gone = 0;
     items.forEach(function (it, key) {
-
-
 
       if (seen && seen.has(key)) return;
       if (it.anchor && !it.anchor.isConnected) {
@@ -686,18 +538,10 @@
     const host = item.anchor.parentElement;
     if (!host) return;
 
-
-
-
     let cb = (item.cb && item.cb.parentElement === host) ? item.cb : null;
     if (!cb) {
 
-
-
       const rowScoped = countFileAnchors(host, 1) === 1;
-
-
-
 
       cb = (rowScoped && host.querySelector('input.lzpp-cb')) || null;
       if (!cb) cb = buildCheckbox(item, host, rowScoped);
@@ -709,11 +553,7 @@
     paint(item);
   }
 
-
   function buildCheckbox(item, host, rowScoped) {
-
-
-
 
     const wrapped = hasMeta(item.anchor);
 
@@ -734,15 +574,11 @@
       }
     }
 
-
-
     if (rowScoped) host.insertBefore(cb, host.firstChild);
     else host.insertBefore(cb, item.anchor);
 
     return cb;
   }
-
-
 
   function bindCheckboxEvents() {
     const EVENTS = ['click', 'mousedown', 'mouseup', 'dblclick', 'pointerdown', 'pointerup'];
@@ -769,8 +605,6 @@
     const row = item.row;
     if (!row || !row.style) return;
 
-
-
     if (!item._paints) {
       const els = [row].concat(Array.from(row.children || []));
       item._paints = els.map(function (el) {
@@ -786,17 +620,12 @@
     if (row.classList) row.classList.toggle('lzpp-on', !!item.checked);
   }
 
-
-
-
   function isBlockedLink(el) {
     const text = (el.textContent || '').replace(/\s+/g, ' ').trim();
     const href = el.getAttribute ? (el.getAttribute('href') || '') : '';
     return BLOCK_TEXT_RE.test(text) || BLOCK_HREF_RE.test(href);
   }
 
-
-  // Remove promo rows
   function dropBlocked() {
     const sels = '#save, [id^="mh_save"], a[href*="ilanzou.com"], a[href*="/unproved/"]';
     $$(sels).forEach(function (el) {
@@ -809,8 +638,6 @@
     });
   }
 
-
-
   const API_HOSTS = [
     'https://apifile.woozooo.com/ajaxfile.php',
     'https://apifile.lanzouw.com/ajaxfile.php'
@@ -821,12 +648,9 @@
     return m ? m[1] : '';
   }
 
-
   function looksLikeChallenge(html) {
     return /arg1\s*=/.test(html) && /acw_sc__v2|function\s*\(a,\s*c\)/.test(html);
   }
-
-
 
   function frameLoad(url, opt) {
     const o = opt || {};
@@ -870,8 +694,6 @@
         }
       }
 
-
-
       fr.src = url;
       (document.body || document.documentElement).appendChild(fr);
       timer = setInterval(tick, 150);
@@ -885,8 +707,6 @@
     return { text: await res.text(), url: res.url || url };
   }
 
-
-
   async function fetchText(url) {
     let first = null;
     try {
@@ -897,7 +717,6 @@
     }
 
     if (first) log('碰到反爬挑战页，先用隐藏 iframe 过验证：' + url);
-
 
     let snap = { hit: null, html: '' };
     try {
@@ -913,17 +732,14 @@
     }
     if (snap.hit) return { text: snap.hit, url: url };
 
-
     try {
       const again = await tryFetch(url);
       if (!looksLikeChallenge(again.text)) return again;
     } catch (e) {}
 
-
     if (snap.html) return { text: snap.html, url: url };
     throw new Error('被反爬拦住了，刷新页面后再试');
   }
-
 
   async function postDown(fid, fields) {
     const body = new URLSearchParams();
@@ -951,13 +767,10 @@
     throw lastErr || new Error('解析失败');
   }
 
-
   function currentPassword() {
     const el = document.querySelector(PWD_INPUT_SEL);
     return el && el.value ? el.value : '';
   }
-
-
 
   async function resolveViaTp(tpUrl) {
     const tp = await fetchText(tpUrl);
@@ -965,10 +778,8 @@
     return await parseTpPage(tp.text);
   }
 
-
   async function parseTpPage(html) {
     state.lastTp = html;
-
 
     const full = pick(/(https?:\/\/[^"'\s<>]+\/file\/\?[^\s"'<>]{20,})/i, html);
     if (full) return full;
@@ -989,14 +800,12 @@
     const qs = pick(/["'](\?[^"'\s]{16,})["']/, html);
     if (base && qs) return base + qs;
 
-
     throw new Error('移动版结构变了（页长 ' + html.length +
       ' · 挑战页 ' + (looksLikeChallenge(html) ? '是' : '否') +
       ' · base ' + (base ? '有' : '无') +
       ' · token ' + (qs ? '有' : '无') +
       ' · sign ' + (sign ? '有' : '无') + '）');
   }
-
 
   async function resolveViaFn(fnUrl) {
     const fn = await fetchText(fnUrl);
@@ -1016,14 +825,11 @@
     });
   }
 
-
   function probeFileDoc(doc) {
-
 
     const a = doc.getElementById('ddown') || doc.querySelector('a[href*="/tp/"]');
     const h = a ? (a.getAttribute('href') || '') : '';
     if (/\/tp\/[A-Za-z0-9_\-]{4,}/.test(h)) return { tp: h };
-
 
     const f = doc.querySelector('iframe[src*="/fn?"]');
     if (f) {
@@ -1033,23 +839,17 @@
     return null;
   }
 
-
   async function resolveDirect(fileUrl) {
     const page = await fetchText(fileUrl);
     const html = page.text;
-
-
 
     if (/\/tp\//i.test(page.url)) {
       return await parseTpPage(html);
     }
 
-
     const fnPath = pick(/<iframe[^>]+src="([^"]*\/fn\?[^"]+)"/i, html) ||
       pick(/(\/fn\?[A-Za-z0-9_\-]+)/i, html);
     if (fnPath) return await resolveViaFn(new URL(fnPath, page.url).href);
-
-
 
     const tpPath = pick(/(\/tp\/[A-Za-z0-9_\-]+(?:\?webtp=[^\s"'&<>\\]+)?)/i, html);
     if (tpPath) return await resolveViaTp(new URL(tpPath, page.url).href);
@@ -1183,7 +983,6 @@
 
   const RESOLVE_RETRY_WAIT = 1500;
 
-  // Resolve a file page to a direct URL
   async function resolveItem(it) {
     if (it.direct && (Date.now() - (it.directAt || 0)) < DIRECT_TTL) {
       log('直链复用：' + it.label);
@@ -1208,7 +1007,6 @@
     throw lastErr || new Error('解析失败');
   }
 
-  // Download queue
   async function run(only) {
     const picked = (only && only.length)
       ? only.slice()
@@ -1244,7 +1042,7 @@
       if (state.stop) break;
       const it = picked[i];
 
-      for (let k = i + 1; k < picked.length && k <= i + RESOLVE_CONCURRENCY; k++) {
+      for (let k = i + 1; k < picked.length && k < i + RESOLVE_CONCURRENCY; k++) {
         startResolve(picked[k]);
       }
 
@@ -1707,7 +1505,6 @@
     syncBar();
   }
 
-  // UI state
   function syncBar() {
     if (!barUI || !document.contains(barUI.go)) return;
 
@@ -1757,7 +1554,6 @@
     if (barEl) document.documentElement.style.setProperty('--lzpp-barh', barEl.offsetHeight + 'px');
   }
 
-  // Search
   function mountSearch() {
     if (isSingleFilePath()) return;
     if (!items.size) return;
@@ -1767,7 +1563,6 @@
     if (!wrap) {
       let anchor = document.getElementById('infos');
       if (anchor) {
-
 
         const header = anchor.previousElementSibling;
         if (header && (header.classList.contains('d2') || header.querySelector('.nameh'))) anchor = header;
@@ -1888,12 +1683,9 @@
     syncBar();
   }
 
-
   function isSingleFilePath() {
     return /^\/i[0-9A-Za-z_-]{5,}\/?$/.test(location.pathname);
   }
-
-
 
   function isFolderPage() {
     if (isSingleFilePath()) return false;
@@ -1929,8 +1721,6 @@
     syncBar();
   }
 
-
-
   const PWD_BTN_SELS = ['#sub', '#passBtn', '.passwddiv-btn', '.btnpwd'];
   const PWD_BTN_TEXT_RE = /(确认|确定|提交|进入|继续|下载)/;
 
@@ -1946,7 +1736,6 @@
       if (sb) return sb;
     }
 
-
     let box = input && input.parentElement;
     for (let i = 0; i < 4 && box && box !== document.body; i++) {
       const cands = $$('button, [type="submit"], [onclick], a', box);
@@ -1959,7 +1748,6 @@
     return null;
   }
 
-  // Password page
   function bindPasswordEnter() {
     let handledAt = 0;
 
@@ -1968,7 +1756,6 @@
 
       const t = e.target;
       if (!t) return;
-
 
       const pwd = document.querySelector(PWD_INPUT_SEL);
       if (!pwd || t !== pwd) return;
@@ -1982,7 +1769,6 @@
       btn.click();
     }, true);
 
-
     window.addEventListener('keyup', function (e) {
       if (e.key !== 'Enter' && e.keyCode !== 13) return;
       if (!handledAt || Date.now() - handledAt > 800) return;
@@ -1991,9 +1777,6 @@
     }, true);
   }
 
-
-
-  // Boot
   function boot() {
     if (window.__lanzouPlusPlus__) return;
 
@@ -2002,7 +1785,6 @@
       return;
     }
     window.__lanzouPlusPlus__ = true;
-
 
     if (DISABLE_ON_TOUCH) {
       log('手机端已停用，请在桌面浏览器使用');
@@ -2016,15 +1798,12 @@
     watchFilemore();
     scan();
 
-
     const mo = new MutationObserver(debounce(function () {
       scan();
     }, 400));
     mo.observe(document.documentElement, { childList: true, subtree: true });
 
-
     [600, 1500, 3000, 6000, 12000].forEach(function (t) { setTimeout(scan, t); });
-
 
     window.LZPP = {
       version: VERSION,
