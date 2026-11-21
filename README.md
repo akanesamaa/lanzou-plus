@@ -2,6 +2,8 @@
 
 蓝奏云文件夹批量下载 userscript，仅供桌面浏览器使用，需要 Tampermonkey 等脚本管理器
 
+实现细节和站点行为说明见 [docs/internals.md](docs/internals.md)。
+
 ## 功能
 
 - 在文件夹分享页为每个文件添加复选框
